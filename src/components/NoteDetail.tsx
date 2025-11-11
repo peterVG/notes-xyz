@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { NoteWithTags } from '../types';
 
@@ -9,36 +8,50 @@ interface NoteDetailProps {
 const NoteDetail: React.FC<NoteDetailProps> = ({ note }) => {
   if (!note) {
     return (
-      <div className="flex items-center justify-center h-full text-slate-500 dark:text-slate-400">
-        <div className="text-center">
-            <h2 className="text-2xl font-semibold">Welcome to ENEX Viewer</h2>
-            <p className="mt-2">Select a note from the list to view its content, or upload an ENEX file to get started.</p>
+      <div className="flex items-center justify-center h-full text-center">
+        <div>
+            <h2 className="text-2xl font-bold text-slate-700 dark:text-slate-200">Welcome to Notes XYZ</h2>
+            <p className="text-slate-500 dark:text-slate-400 mt-2">Select a note from the list to view its details, or upload an ENEX file to get started.</p>
         </div>
       </div>
     );
   }
 
+  // Evernote's content is HTML, so we need to render it as such.
+  // The content is wrapped in a div to allow for scrolling if it overflows.
   return (
-    <article className="prose prose-slate dark:prose-invert max-w-none">
-      <h1>{note.title}</h1>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-500 dark:text-slate-400 mb-6 border-b border-t border-slate-200 dark:border-slate-700 py-2">
-        <span><strong>Author:</strong> {note.author}</span>
-        <span><strong>Updated:</strong> {new Date(note.updatedAt).toLocaleString()}</span>
-        <span><strong>Created:</strong> {new Date(note.createdAt).toLocaleString()}</span>
-      </div>
-      {note.tags.length > 0 && (
-        <div className="mb-6 flex flex-wrap gap-2">
-          {note.tags.map(tag => (
-            <span key={tag} className="px-3 py-1 text-sm text-blue-800 dark:text-blue-200 bg-blue-100 dark:bg-blue-900/50 rounded-full">{tag}</span>
-          ))}
+    <article className="h-full flex flex-col">
+      <header className="flex-shrink-0 pb-4 border-b border-slate-200 dark:border-slate-700">
+        <div className="relative group">
+          <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 dark:text-white cursor-pointer">
+            {note.title}
+          </h1>
+          <div 
+            className="
+              text-xs text-slate-500 dark:text-slate-400 
+              flex flex-wrap gap-x-4 gap-y-1 
+              transition-all duration-300 ease-in-out 
+              opacity-0 max-h-0 overflow-hidden 
+              group-hover:opacity-100 group-hover:max-h-20 group-hover:mt-2"
+          >
+            <span><strong>Author:</strong> {note.author || 'N/A'}</span>
+            <span><strong>Created:</strong> {new Date(note.createdAt).toLocaleString()}</span>
+            <span><strong>Updated:</strong> {new Date(note.updatedAt).toLocaleString()}</span>
+          </div>
         </div>
-      )}
-      {/* 
-        The content from Evernote is HTML. We use dangerouslySetInnerHTML to render it.
-        This is safe in this context because the user is uploading their own data.
-        In a multi-user environment, this would require sanitization to prevent XSS.
-      */}
-      <div dangerouslySetInnerHTML={{ __html: note.content }} />
+
+        {note.tags.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {note.tags.map(tag => (
+              <span key={tag} className="px-2 py-1 text-xs font-medium text-sky-800 dark:text-sky-200 bg-sky-100 dark:bg-sky-900/50 rounded-full">{tag}</span>
+            ))}
+          </div>
+        )}
+      </header>
+      <div 
+        className="mt-4 flex-grow overflow-y-auto prose dark:prose-invert max-w-none"
+        dangerouslySetInnerHTML={{ __html: note.content }} 
+      />
     </article>
   );
 };

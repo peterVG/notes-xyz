@@ -151,7 +151,7 @@ const App: React.FC = () => {
   return (
     <div className="flex flex-col h-screen font-sans text-slate-800 dark:text-slate-200">
       <header className="flex-shrink-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-4 flex items-center justify-between shadow-sm">
-        <h1 className="text-xl font-bold text-slate-900 dark:text-white">ENEX Viewer</h1>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-white">Notes XYZ</h1>
         <div className="flex items-center gap-2">
             <button onClick={() => fileUploadRef.current?.click()} className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-slate-400" disabled={isLoading || !db}>Upload ENEX</button>
             <button onClick={handleDeleteDb} className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-md hover:bg-red-700 disabled:bg-slate-400" disabled={isLoading || !db || notes.length === 0}>Delete DB</button>

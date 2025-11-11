@@ -1,5 +1,5 @@
 {
-  "name": "Evernote ENEX Viewer",
+  "name": "Notes XYZ",
   "description": "An application to upload Evernote ENEX export files into a local, searchable SQLite database that runs entirely in your browser.",
   "requestFramePermissions": []
 }
