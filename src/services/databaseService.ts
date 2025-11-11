@@ -1,3 +1,4 @@
+
 import { NoteWithTags } from '../types';
 
 // This is a global because of how the sql.js CDN script works.
@@ -6,60 +7,7 @@ declare const initSqlJs: (config: { locateFile: (file: string) => string }) => P
 export type Database = any;
 export type SearchBy = 'title' | 'author' | 'tag' | 'content';
 
-// --- IndexedDB Persistence ---
-const IDB_NAME = 'EnexViewerDB';
-const IDB_STORE_NAME = 'sqliteStore';
-const IDB_KEY = 'database';
-
-const openIdb = (): Promise<IDBDatabase> => {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(IDB_NAME, 1);
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains(IDB_STORE_NAME)) {
-        db.createObjectStore(IDB_STORE_NAME);
-      }
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = (event) => reject((event.target as IDBRequest).error);
-  });
-};
-
-export const saveDbToStorage = async (db: Database): Promise<void> => {
-  const idb = await openIdb();
-  const transaction = idb.transaction(IDB_STORE_NAME, 'readwrite');
-  const store = transaction.objectStore(IDB_STORE_NAME);
-  store.put(db.export(), IDB_KEY);
-  return new Promise((resolve, reject) => {
-    transaction.oncomplete = () => { idb.close(); resolve(); };
-    transaction.onerror = () => { idb.close(); reject(transaction.error); };
-  });
-};
-
-const loadDbDataFromStorage = async (): Promise<Uint8Array | null> => {
-  const idb = await openIdb();
-  const transaction = idb.transaction(IDB_STORE_NAME, 'readonly');
-  const store = transaction.objectStore(IDB_STORE_NAME);
-  const request = store.get(IDB_KEY);
-  return new Promise((resolve, reject) => {
-    request.onsuccess = () => {
-      idb.close();
-      resolve(request.result ? new Uint8Array(request.result) : null);
-    };
-    request.onerror = () => { idb.close(); reject(request.error); };
-  });
-};
-
-export const deleteDbFromStorage = async (): Promise<void> => {
-  const idb = await openIdb();
-  const transaction = idb.transaction(IDB_STORE_NAME, 'readwrite');
-  const store = transaction.objectStore(IDB_STORE_NAME);
-  store.delete(IDB_KEY);
-  return new Promise((resolve, reject) => {
-    transaction.oncomplete = () => { idb.close(); resolve(); };
-    transaction.onerror = () => { idb.close(); reject(transaction.error); };
-  });
-};
+// --- IndexedDB Persistence has been removed as per user request for file-based storage ---
 
 // --- Database Initialization ---
 const createNewDb = (SQL: any): Database => {
@@ -98,24 +46,19 @@ export const initDb = async (): Promise<Database> => {
   const SQL = await initSqlJs({
     locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`
   });
-  const dbData = await loadDbDataFromStorage();
-  if (dbData && dbData.length > 0) {
-    try {
-      return new SQL.Database(dbData);
-    } catch (e) {
-      console.error("Failed to load database from storage, creating a new one.", e);
-      await deleteDbFromStorage();
-    }
-  }
   return createNewDb(SQL);
 };
 
+export const loadDbFromBuffer = async (buffer: ArrayBuffer): Promise<Database> => {
+  const SQL = await initSqlJs({
+    locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`
+  });
+  return new SQL.Database(new Uint8Array(buffer));
+};
+
 export const createFreshDb = async (): Promise<Database> => {
-    await deleteDbFromStorage();
-    const SQL = await initSqlJs({
-        locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`
-    });
-    return createNewDb(SQL);
+    // This function now just creates a new, empty DB in memory.
+    return initDb();
 }
 
 // --- Database Operations ---

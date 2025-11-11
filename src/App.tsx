@@ -10,8 +10,8 @@ import {
   searchNotes, 
   getNoteById, 
   SearchBy,
-  saveDbToStorage,
-  createFreshDb
+  createFreshDb,
+  loadDbFromBuffer
 } from './services/databaseService';
 import { calculateFileHash } from './services/cryptoService';
 import { parseEnex } from './services/enexParser';
@@ -20,6 +20,7 @@ import NoteDetail from './components/NoteDetail';
 import SearchBar from './components/SearchBar';
 import StatusBar from './components/StatusBar';
 import Modal from './components/Modal';
+import SettingsMenu from './components/SettingsMenu';
 
 const App: React.FC = () => {
   const [db, setDb] = useState<Database | null>(null);
@@ -34,18 +35,14 @@ const App: React.FC = () => {
   });
   
   const fileUploadRef = useRef<HTMLInputElement>(null);
+  const dbImportRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     initDb()
       .then(database => {
         setDb(database);
-        const allNotes = getAllNotes(database);
-        setNotes(allNotes);
-        if (allNotes.length > 0) {
-          setStatus(`Database loaded from storage. ${allNotes.length} notes available.`);
-        } else {
-          setStatus(`Database ready. Upload an ENEX file to begin.`);
-        }
+        setNotes([]); // Start with no notes
+        setStatus('Database ready. Upload an ENEX file or import a database to begin.');
       })
       .catch(err => {
         console.error(err);
@@ -55,13 +52,6 @@ const App: React.FC = () => {
         setIsLoading(false);
       });
   }, []);
-
-  const refreshNotes = useCallback(() => {
-    if (db) {
-      const allNotes = getAllNotes(db);
-      setNotes(allNotes);
-    }
-  }, [db]);
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || event.target.files.length === 0 || !db) return;
@@ -92,10 +82,8 @@ const App: React.FC = () => {
       const insertedCount = insertNotes(db, parsedNotes);
       addUploadedFile(db, hash, file.name);
 
-      await saveDbToStorage(db);
-
-      refreshNotes();
-      setStatus(`Successfully imported and saved ${insertedCount} notes from ${file.name}.`);
+      setNotes(getAllNotes(db));
+      setStatus(`Successfully imported ${insertedCount} notes. Export database to save changes.`);
     } catch (error) {
       console.error(error);
       setStatus(`Error processing file: ${(error as Error).message}`);
@@ -115,7 +103,7 @@ const App: React.FC = () => {
   const handleSearch = useCallback((query: string, by: SearchBy) => {
     if (db) {
       if(query.trim() === '') {
-        refreshNotes();
+        setNotes(getAllNotes(db));
         setStatus(`Search cleared. Displaying all notes.`);
         return;
       }
@@ -125,14 +113,60 @@ const App: React.FC = () => {
       setStatus(`${results.length} notes found for "${query}".`);
       setSelectedNote(null);
     }
-  }, [db, refreshNotes]);
+  }, [db]);
+
+  const handleExportDb = () => {
+    if (!db || notes.length === 0) return;
+    setStatus('Exporting database...');
+    try {
+      const data = db.export();
+      const blob = new Blob([data], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'notes_xyz.sqlite';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setStatus('Database exported successfully as notes_xyz.sqlite.');
+    } catch (error) {
+      console.error(error);
+      setStatus(`Error exporting database: ${(error as Error).message}`);
+    }
+  };
+
+  const handleImportDbChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0) return;
+
+    const file = event.target.files[0];
+    setIsLoading(true);
+    setStatus(`Importing database from ${file.name}...`);
+
+    try {
+        const buffer = await file.arrayBuffer();
+        const newDb = await loadDbFromBuffer(buffer);
+        setDb(newDb);
+        const allNotes = getAllNotes(newDb);
+        setNotes(allNotes);
+        setSelectedNote(null);
+        setStatus(`Successfully imported ${allNotes.length} notes from ${file.name}.`);
+    } catch (error) {
+      console.error(error);
+      setModal({ isOpen: true, title: 'Import Error', message: `Could not import database. The file may be corrupt or not a valid Notes XYZ database. Error: ${(error as Error).message}`});
+      setStatus(`Error importing database.`);
+    } finally {
+      setIsLoading(false);
+      if (event.target) event.target.value = ''; // Reset file input
+    }
+  };
 
   const handleDeleteDb = async () => {
     if (!db) return;
-    const confirmation = window.confirm('Are you sure you want to delete all data? This action is permanent and cannot be undone.');
+    const confirmation = window.confirm('Are you sure you want to clear all data? This will create a new empty database and unsaved changes will be lost.');
     if (confirmation) {
         setIsLoading(true);
-        setStatus('Deleting database...');
+        setStatus('Clearing database...');
         try {
             const newDb = await createFreshDb();
             setDb(newDb);
@@ -141,7 +175,7 @@ const App: React.FC = () => {
             setStatus('Database has been cleared. Ready for new uploads.');
         } catch (error) {
             console.error(error);
-            setStatus(`Error deleting database: ${(error as Error).message}`);
+            setStatus(`Error clearing database: ${(error as Error).message}`);
         } finally {
             setIsLoading(false);
         }
@@ -154,8 +188,16 @@ const App: React.FC = () => {
         <h1 className="text-xl font-bold text-slate-900 dark:text-white">Notes XYZ</h1>
         <div className="flex items-center gap-2">
             <button onClick={() => fileUploadRef.current?.click()} className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-slate-400" disabled={isLoading || !db}>Upload ENEX</button>
-            <button onClick={handleDeleteDb} className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-md hover:bg-red-700 disabled:bg-slate-400" disabled={isLoading || !db || notes.length === 0}>Delete DB</button>
+            <SettingsMenu
+                onImportClick={() => dbImportRef.current?.click()}
+                onExportClick={handleExportDb}
+                onClearClick={handleDeleteDb}
+                isImportDisabled={isLoading || !db}
+                isExportDisabled={isLoading || !db || notes.length === 0}
+                isClearDisabled={isLoading || !db || notes.length === 0}
+            />
             <input type="file" accept=".enex" ref={fileUploadRef} onChange={handleFileChange} className="hidden" />
+            <input type="file" accept=".sqlite,.db" ref={dbImportRef} onChange={handleImportDbChange} className="hidden" />
         </div>
       </header>
       
