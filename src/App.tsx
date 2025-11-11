@@ -19,6 +19,7 @@ import NoteList from './components/NoteList';
 import NoteDetail from './components/NoteDetail';
 import SearchBar from './components/SearchBar';
 import StatusBar from './components/StatusBar';
+import Modal from './components/Modal';
 
 const App: React.FC = () => {
   const [db, setDb] = useState<Database | null>(null);
@@ -26,6 +27,11 @@ const App: React.FC = () => {
   const [selectedNote, setSelectedNote] = useState<NoteWithTags | null>(null);
   const [status, setStatus] = useState('Initializing database...');
   const [isLoading, setIsLoading] = useState(true);
+  const [modal, setModal] = useState<{ isOpen: boolean; title: string; message: string }>({
+    isOpen: false,
+    title: '',
+    message: '',
+  });
   
   const fileUploadRef = useRef<HTMLInputElement>(null);
 
@@ -69,8 +75,13 @@ const App: React.FC = () => {
       const hash = await calculateFileHash(content);
 
       if (isFileUploaded(db, hash)) {
-        setStatus(`File ${file.name} has already been uploaded.`);
+        setModal({
+          isOpen: true,
+          title: 'Duplicate File',
+          message: `The file "${file.name}" has already been uploaded. Its contents are already in the database.`,
+        });
         setIsLoading(false);
+        if(event.target) event.target.value = ''; // Reset file input
         return;
       }
 
@@ -161,6 +172,14 @@ const App: React.FC = () => {
         </section>
       </main>
       
+      <Modal
+        isOpen={modal.isOpen}
+        onClose={() => setModal({ isOpen: false, title: '', message: '' })}
+        title={modal.title}
+      >
+        <p>{modal.message}</p>
+      </Modal>
+
       <StatusBar status={status} isLoading={isLoading} />
     </div>
   );
