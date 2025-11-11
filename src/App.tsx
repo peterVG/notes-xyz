@@ -115,6 +115,13 @@ const App: React.FC = () => {
     }
   }, [db]);
 
+  const handleTagClick = useCallback((tagName: string) => {
+    if (db) {
+      // Reuse the existing search logic
+      handleSearch(tagName, 'tag');
+    }
+  }, [db, handleSearch]);
+
   const handleExportDb = () => {
     if (!db || notes.length === 0) return;
     setStatus('Exporting database...');
@@ -205,12 +212,12 @@ const App: React.FC = () => {
         <aside className="w-full md:w-1/3 lg:w-1/4 flex flex-col border-r border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800">
           <SearchBar onSearch={handleSearch} disabled={isLoading || !db} />
           <div className="flex-grow overflow-y-auto">
-            <NoteList notes={notes} onSelectNote={handleSelectNote} selectedNoteId={selectedNote?.id || null} />
+            <NoteList notes={notes} onSelectNote={handleSelectNote} selectedNoteId={selectedNote?.id || null} onTagClick={handleTagClick} />
           </div>
         </aside>
 
         <section className="w-full md:w-2/3 lg:w-3/4 flex-grow overflow-y-auto p-4 md:p-6 bg-white dark:bg-slate-900">
-          <NoteDetail note={selectedNote} />
+          <NoteDetail note={selectedNote} onTagClick={handleTagClick} />
         </section>
       </main>
       

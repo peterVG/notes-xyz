@@ -3,9 +3,10 @@ import { NoteWithTags } from '../types';
 
 interface NoteDetailProps {
   note: NoteWithTags | null;
+  onTagClick: (tagName: string) => void;
 }
 
-const NoteDetail: React.FC<NoteDetailProps> = ({ note }) => {
+const NoteDetail: React.FC<NoteDetailProps> = ({ note, onTagClick }) => {
   if (!note) {
     return (
       <div className="flex items-center justify-center h-full text-center">
@@ -43,7 +44,13 @@ const NoteDetail: React.FC<NoteDetailProps> = ({ note }) => {
         {note.tags.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
             {note.tags.map(tag => (
-              <span key={tag} className="px-2 py-1 text-xs font-medium text-sky-800 dark:text-sky-200 bg-sky-100 dark:bg-sky-900/50 rounded-full">{tag}</span>
+              <button
+                key={tag}
+                onClick={() => onTagClick(tag)}
+                className="px-2 py-1 text-xs font-medium text-sky-800 dark:text-sky-200 bg-sky-100 dark:bg-sky-900/50 rounded-full hover:bg-sky-200 dark:hover:bg-sky-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
+              >
+                {tag}
+              </button>
             ))}
           </div>
         )}
