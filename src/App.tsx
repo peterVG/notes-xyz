@@ -9,7 +9,6 @@ import {
   getAllNotes, 
   searchNotes, 
   getNoteById, 
-  SearchBy,
   createFreshDb,
   loadDbFromBuffer
 } from './services/databaseService';
@@ -100,15 +99,15 @@ const App: React.FC = () => {
     }
   }, [db]);
 
-  const handleSearch = useCallback((query: string, by: SearchBy) => {
+  const handleSearch = useCallback((query: string) => {
     if (db) {
       if(query.trim() === '') {
         setNotes(getAllNotes(db));
         setStatus(`Search cleared. Displaying all notes.`);
         return;
       }
-      setStatus(`Searching for "${query}" by ${by}...`);
-      const results = searchNotes(db, query, by);
+      setStatus(`Searching for "${query}"...`);
+      const results = searchNotes(db, query);
       setNotes(results);
       setStatus(`${results.length} notes found for "${query}".`);
       setSelectedNote(null);
@@ -117,8 +116,7 @@ const App: React.FC = () => {
 
   const handleTagClick = useCallback((tagName: string) => {
     if (db) {
-      // Reuse the existing search logic
-      handleSearch(tagName, 'tag');
+      handleSearch(tagName);
     }
   }, [db, handleSearch]);
 

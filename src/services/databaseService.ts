@@ -1,11 +1,9 @@
-
 import { NoteWithTags } from '../types';
 
 // This is a global because of how the sql.js CDN script works.
 declare const initSqlJs: (config: { locateFile: (file: string) => string }) => Promise<any>;
 
 export type Database = any;
-export type SearchBy = 'title' | 'author' | 'tag' | 'content';
 
 // --- IndexedDB Persistence has been removed as per user request for file-based storage ---
 
@@ -125,44 +123,25 @@ const mapResultsToNotes = (results: any[]): NoteWithTags[] => {
   });
 };
 
-export const searchNotes = (db: Database, query: string, by: SearchBy): NoteWithTags[] => {
-  const baseQuery = `
+export const searchNotes = (db: Database, query: string): NoteWithTags[] => {
+  const likeQuery = `%${query}%`;
+  
+  const sql = `
     SELECT
       n.id, n.title, n.content, n.author, n.created_at, n.updated_at,
       (SELECT GROUP_CONCAT(t.name) FROM tags t JOIN note_tags nt ON t.id = nt.tag_id WHERE nt.note_id = n.id) as tags
     FROM notes n
-  `;
-  const likeQuery = `%${query}%`;
-  let results;
-
-  if (by === 'tag') {
-    const stmt = db.prepare(`
-      ${baseQuery}
-      WHERE n.id IN (
+    WHERE
+      n.title LIKE :query OR
+      n.content LIKE :query OR
+      n.author LIKE :query OR
+      n.id IN (
         SELECT nt.note_id FROM note_tags nt JOIN tags t ON nt.tag_id = t.id WHERE t.name LIKE :query
-      ) ORDER BY n.updated_at DESC
-    `);
-    stmt.bind({ ':query': likeQuery });
-    const tagResults = [];
-    while (stmt.step()) {
-        tagResults.push(stmt.getAsObject());
-    }
-    stmt.free();
-     return tagResults.map((row: any) => ({
-      id: row.id,
-      title: row.title,
-      content: row.content,
-      author: row.author,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      tags: (row.tags as string | null)?.split(',').filter(Boolean) || [],
-    }));
-
-  } else {
-    const sql = `${baseQuery} WHERE n.${by} LIKE :query ORDER BY n.updated_at DESC`;
-    results = db.exec(sql, { ':query': likeQuery });
-  }
-
+      )
+    ORDER BY n.updated_at DESC
+  `;
+  
+  const results = db.exec(sql, { ':query': likeQuery });
   return mapResultsToNotes(results);
 };
 
